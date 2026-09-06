@@ -1,6 +1,12 @@
 package com.hoffi.compose.complib.layouts.draweredcontent
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -8,6 +14,7 @@ import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
+import com.hoffi.compose.complib.debugBorder
 import com.hoffi.compose.complib.layouts.EmptyComposable
 
 class DraweredContentInfo() {
@@ -17,11 +24,6 @@ class DraweredContentInfo() {
     var bottomDrawerPlacables: List<Placeable> = emptyList()
     var leftDrawerPlacables: List<Placeable> = emptyList()
     var rightDrawerPlacables: List<Placeable> = emptyList()
-
-    var topDrawerHandlePlacables: List<Placeable> = emptyList()
-    var bottomDrawerHandlePlacables: List<Placeable> = emptyList()
-    var leftDrawerHandlePlacables: List<Placeable> = emptyList()
-    var rightDrawerHandlePlacables: List<Placeable> = emptyList()
 
     var topDrawerSize: IntSize = IntSize.Zero
     var bottomDrawerSize: IntSize = IntSize.Zero
@@ -76,48 +78,60 @@ private fun DraweredContentLayout(
             // ==============================+
             // measure (by composing) top drawerHandle and get its size
             // ==============================+
-            ci.topDrawerHandlePlacables = subcompose(DraweredContentLayoutSlots.TopDrawerHandle) {
-                TopDrawerHandle(handleHeight = drawerDp)
-            }.map { it.measure(constraints.copy(maxHeight = drawerDp.roundToPx())) }
+            ci.topDrawerPlacables = subcompose(DraweredContentLayoutSlots.TopDrawerHandle) {
+                Column(Modifier.width(givenMaxWidth.toDp()).debugBorder()) {
+                    topDrawer(PaddingValues())
+                    TopDrawerHandle(handleHeight = drawerDp)
+                }
+            }.map { it.measure(constraints.copy(maxHeight = givenMaxHeight)) }
             ci.topDrawerSize = IntSize(
-                width = ci.topDrawerHandlePlacables.maxOfOrNull { it.width } ?: 0,
-                height = ci.topDrawerHandlePlacables.maxOfOrNull { it.height } ?: 0
+                width = ci.topDrawerPlacables.maxOfOrNull { it.width } ?: 0,
+                height = ci.topDrawerPlacables.maxOfOrNull { it.height } ?: 0
             )
         }
         if (bottomDrawer !== EmptyComposable) {
             // ==============================+
             // measure (by composing) bottom drawerHandle and get its size
             // ==============================+
-            ci.bottomDrawerHandlePlacables = subcompose(DraweredContentLayoutSlots.BottomDrawerHandle) {
-                BottomDrawerHandle(handleHeight = drawerDp)
-            }.map { it.measure(constraints.copy(maxHeight = drawerDp.roundToPx())) }
+            ci.bottomDrawerPlacables = subcompose(DraweredContentLayoutSlots.BottomDrawerHandle) {
+                Column(Modifier.width(givenMaxWidth.toDp()).debugBorder()) {
+                    BottomDrawerHandle(handleHeight = drawerDp)
+                    bottomDrawer(PaddingValues())
+                }
+            }.map { it.measure(constraints.copy(maxHeight = givenMaxHeight)) }
             ci.bottomDrawerSize = IntSize(
-                width = ci.bottomDrawerHandlePlacables.maxOfOrNull { it.width } ?: 0,
-                height = ci.bottomDrawerHandlePlacables.maxOfOrNull { it.height } ?: 0
+                width = ci.bottomDrawerPlacables.maxOfOrNull { it.width } ?: 0,
+                height = ci.bottomDrawerPlacables.maxOfOrNull { it.height } ?: 0
             )
         }
         if (leftDrawer !== EmptyComposable) {
             // ==============================+
             // measure (by composing) left drawerHandle and get its size
             // ==============================+
-            ci.leftDrawerHandlePlacables = subcompose(DraweredContentLayoutSlots.LeftDrawerHandle) {
-                LeftDrawerHandle(handleWidth = drawerDp)
-            }.map { it.measure(constraints.copy(maxWidth = drawerDp.roundToPx())) }
+            ci.leftDrawerPlacables = subcompose(DraweredContentLayoutSlots.LeftDrawerHandle) {
+                Row(Modifier.height(givenMaxHeight.toDp()).debugBorder()) {
+                    leftDrawer(PaddingValues())
+                    LeftDrawerHandle(handleWidth = drawerDp)
+                }
+            }.map { it.measure(constraints.copy(maxWidth = givenMaxWidth)) }
             ci.leftDrawerSize = IntSize(
-                width = ci.leftDrawerHandlePlacables.maxOfOrNull { it.width } ?: 0,
-                height = ci.leftDrawerHandlePlacables.maxOfOrNull { it.height } ?: 0
+                width = ci.leftDrawerPlacables.maxOfOrNull { it.width } ?: 0,
+                height = ci.leftDrawerPlacables.maxOfOrNull { it.height } ?: 0
             )
         }
         if (rightDrawer !== EmptyComposable) {
             // ==============================+
             // measure (by composing) right drawerHandle and get its size
             // ==============================+
-            ci.rightDrawerHandlePlacables = subcompose(DraweredContentLayoutSlots.RightDrawerHandle) {
-                RightDrawerHandle(handleWidth = drawerDp)
-            }.map { it.measure(constraints.copy(maxWidth = drawerDp.roundToPx())) }
+            ci.rightDrawerPlacables = subcompose(DraweredContentLayoutSlots.RightDrawerHandle) {
+                Row(Modifier.height(givenMaxHeight.toDp()).debugBorder()) {
+                    RightDrawerHandle(handleWidth = drawerDp)
+                    rightDrawer(PaddingValues())
+                }
+            }.map { it.measure(constraints.copy(maxWidth = givenMaxWidth)) }
             ci.rightDrawerSize = IntSize(
-                width = ci.rightDrawerHandlePlacables.maxOfOrNull { it.width } ?: 0,
-                height = ci.rightDrawerHandlePlacables.maxOfOrNull { it.height } ?: 0
+                width = ci.rightDrawerPlacables.maxOfOrNull { it.width } ?: 0,
+                height = ci.rightDrawerPlacables.maxOfOrNull { it.height } ?: 0
             )
         }
 
@@ -147,20 +161,20 @@ private fun DraweredContentLayout(
         // ==========================================================================================================+
         layout(eventualLayoutWidth, eventualLayoutHeight) {
             // The bottom bar is always at the bottom of the layout
-            ci.bottomDrawerHandlePlacables.forEach {
+            ci.bottomDrawerPlacables.forEach {
                 it.place(0, eventualLayoutHeight - ci.bottomDrawerSize.height)
             }
-            ci.rightDrawerHandlePlacables.forEach {
+            ci.rightDrawerPlacables.forEach {
                 it.place( eventualLayoutWidth - ci.rightDrawerSize.width, 0)
             }
-            ci.leftDrawerHandlePlacables.forEach {
+            ci.leftDrawerPlacables.forEach {
                 it.place( 0, 0)
             }
-            ci.topDrawerHandlePlacables.forEach {
-                it.place(ci.leftDrawerSize.width, 0)
+            ci.topDrawerPlacables.forEach {
+                it.place(0, 0)
             }
             ci.mainPlaceables.forEach {
-                it.place(ci.leftDrawerSize.width, ci.topDrawerSize.height)
+                it.place(drawerDp.roundToPx(), drawerDp.roundToPx())
             }
         }
     }

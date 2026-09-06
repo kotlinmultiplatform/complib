@@ -139,7 +139,7 @@ fun FramedContentAppBox() {
                 modifier = Modifier.debugBorder(),
                 topDrawer = { paddingValues ->
                     Box(
-                        modifier = Modifier.debugBorder(),
+                        modifier = Modifier.fillMaxWidth().debugBorder(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -151,7 +151,7 @@ fun FramedContentAppBox() {
                 },
                 leftDrawer = { paddingValues ->
                     Box(
-                        modifier = Modifier.debugBorder(),
+                        modifier = Modifier.fillMaxHeight().debugBorder(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
