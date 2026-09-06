@@ -9,6 +9,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.SubcomposeMeasureScope
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
+import com.hoffi.compose.complib.layouts.EmptyComposable
 
 enum class FramingStyle {
     // TOP
@@ -78,11 +79,11 @@ class FramedContentInfo(parentConstraints: Constraints, initialPadding: PaddingV
 fun FramedContent(
     modifier: Modifier = Modifier,
     framing: FramingStyle = FramingStyle.STRETCH_TOP_AND_BOTTOM,
+    topPanel: @Composable (PaddingValues) -> Unit = EmptyComposable,
+    bottomPanel: @Composable (PaddingValues) -> Unit = EmptyComposable,
+    leftPanel: @Composable (PaddingValues) -> Unit = EmptyComposable,
+    rightPanel: @Composable (PaddingValues) -> Unit = EmptyComposable,
     mainContent: @Composable (PaddingValues) -> Unit,
-    topPanel: @Composable (PaddingValues) -> Unit = {},
-    bottomPanel: @Composable (PaddingValues) -> Unit = {},
-    leftPanel: @Composable (PaddingValues) -> Unit = {},
-    rightPanel: @Composable (PaddingValues) -> Unit = {},
 ) {
     val child = @Composable { childModifier: Modifier ->
         Surface(modifier = childModifier) {
@@ -133,44 +134,44 @@ private fun FramedContentLayout(
         // measure each Panel (only once!!!) with pre-calculated maxWidth/Height constraints after they have been rendered
         // ==================================================================================================================+
 
-        val fci = FramedContentInfo(constraints)
+        val ci = FramedContentInfo(constraints)
 
         when (framing) {
             FramingStyle.STRETCH_TOP_AND_BOTTOM -> {
-                measureTopAndBottom(fci, topPanel, bottomPanel)
+                measureTopAndBottom(ci, topPanel, bottomPanel)
 
                 // side panels eventually are place(x, topPanelHeight) UNDER top and ABOVE bottom
                 // for ending ABOVE bottom, they have to be "shortened" in height by a bottom padding
-                val sidePanelsPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.leftPadding = sidePanelsPadding
-                fci.rightPadding = sidePanelsPadding
+                val sidePanelsPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.leftPadding = sidePanelsPadding
+                ci.rightPadding = sidePanelsPadding
 
                 // now we know the max HEIGHT of the mainContent
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
 
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight=mainContentHeightMax)
-                fci.rightConstraints = fci.leftConstraints
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight=mainContentHeightMax)
+                ci.rightConstraints = ci.leftConstraints
 
-                measureLeftAndRight(fci, leftPanel, rightPanel)
+                measureLeftAndRight(ci, leftPanel, rightPanel)
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_TOP_AND_BOTTOM
-                val leftToRight1 = fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.bottomSize.width
+                val leftToRight1 = ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.bottomSize.width
 
-                val topToBottom1 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.leftSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.leftSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -181,20 +182,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_TOP_AND_BOTTOM
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // FramingStyle.STRETCH_TOP_AND_BOTTOM
@@ -202,59 +203,59 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure topPanel
                 // ==============================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // side panels eventually are place(x, topPanelHeight) UNDER top but stretch fully vertically from there
                 // so they need to be "shortened" in height by a bottom padding of topPanel.height, because they will start under topPanel
-                val sidePanelsPadding = PaddingValues(bottom = fci.topSize.height.toDp())
-                fci.leftPadding = sidePanelsPadding
-                fci.rightPadding = sidePanelsPadding
+                val sidePanelsPadding = PaddingValues(bottom = ci.topSize.height.toDp())
+                ci.leftPadding = sidePanelsPadding
+                ci.rightPadding = sidePanelsPadding
 
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight=givenMaxHeight - fci.topSize.height)
-                fci.rightConstraints = fci.leftConstraints
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight=givenMaxHeight - ci.topSize.height)
+                ci.rightConstraints = ci.leftConstraints
 
-                measureLeftAndRight(fci, leftPanel, rightPanel)
+                measureLeftAndRight(ci, leftPanel, rightPanel)
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = mainContentWidthMax)
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = mainContentWidthMax)
                 // =================================+
                 // measure bottomPanel
                 // =================================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max HEIGHT of the mainContent, having complete Constraints for the mainContent
                 // and therefore also for the bottomPanel
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_TOP_THEN_LEFT_AND_RIGHT
-                val leftToRight1 = fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.topSize.height + fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height
+                val topToBottom1 = ci.topSize.height + ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -265,20 +266,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_TOP_THEN_LEFT_AND_RIGHT
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // FramingStyle.STRETCH_TOP_THEN_LEFT_AND_RIGHT
@@ -286,82 +287,82 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure topPanel
                 // ==============================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // left panel eventually is place(0, topPanelHeight) UNDER top and stretched fully vertically from there
                 // so it needs to be "shortened" in height by a bottom padding of topPanel.height, because it will start under topPanel
-                fci.leftPadding = PaddingValues(bottom = fci.topSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight=givenMaxHeight - fci.topSize.height)
+                ci.leftPadding = PaddingValues(bottom = ci.topSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight=givenMaxHeight - ci.topSize.height)
 
                 // ==============================+
                 // measure leftPanel
                 // ==============================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // bottom panel eventually is place(leftPanelWidth, y) UNDER top and mainContent
                 // so it needs to be "shortened" in width by a end padding of leftPanel.width, because it will start right of leftPanel
-                fci.bottomPadding = PaddingValues(end = fci.leftSize.width.toDp())
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width)
+                ci.bottomPadding = PaddingValues(end = ci.leftSize.width.toDp())
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width)
 
                 // =================================+
                 // measure bottomPanel
                 // =================================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.rightPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight = givenMaxHeight - fci.topSize.height - fci.bottomSize.height)
+                ci.rightPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight = givenMaxHeight - ci.topSize.height - ci.bottomSize.height)
 
                 // =====================================+
                 // measure rightPanel
                 // =====================================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH _and_ HEIGHT of the mainContent
-                val mainContentMaxHeight = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                val mainContentMaxWidth = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentMaxHeight = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                val mainContentMaxWidth = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_TOP_THEN_LEFT_THEN_BOTTOM
-                val leftToRight1 = fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width
+                val leftToRight1 = ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width
 
-                val topToBottom1 = fci.topSize.height  + fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.topSize.height  + ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -372,20 +373,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_TOP_THEN_LEFT_THEN_BOTTOM
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // FramingStyle.STRETCH_TOP_THEN_LEFT_THEN_BOTTOM
@@ -393,82 +394,82 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure topPanel
                 // ==============================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // right panel eventually is place(w - rightPanelWidth, topPanelHeight) UNDER top and stretched fully vertically from there
                 // so it needs to be "shortened" in height by a bottom padding of topPanel.height, because it will start under topPanel
-                fci.rightPadding = PaddingValues(bottom = fci.topSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight=givenMaxHeight - fci.topSize.height)
+                ci.rightPadding = PaddingValues(bottom = ci.topSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight=givenMaxHeight - ci.topSize.height)
 
                 // ==============================+
                 // measure rightPanel
                 // ==============================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // bottom panel eventually is place(0, y) UNDER top and mainContent
                 // so it needs to be "shortened" in width by a end padding of rightPanel.width, because it will end left of rightPanel
-                fci.bottomPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.rightSize.width)
+                ci.bottomPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.rightSize.width)
 
                 // =================================+
                 // measure bottomPanel
                 // =================================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.leftPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight = givenMaxHeight - fci.topSize.height - fci.bottomSize.height)
+                ci.leftPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight = givenMaxHeight - ci.topSize.height - ci.bottomSize.height)
 
                 // =====================================+
                 // measure leftPanel
                 // =====================================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH _and_ HEIGHT of the mainContent
-                val mainContentMaxHeight = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                val mainContentMaxWidth = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentMaxHeight = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                val mainContentMaxWidth = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_TOP_THEN_RIGHT_THEN_BOTTOM
-                val leftToRight1 = fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.topSize.height  + fci.leftSize.height + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height
+                val topToBottom1 = ci.topSize.height  + ci.leftSize.height + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -479,20 +480,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_TOP_THEN_RIGHT_THEN_BOTTOM
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_TOP_THEN_RIGHT_THEN_BOTTOM
@@ -500,59 +501,59 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure bottomPanel
                 // ==============================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // side panels eventually are place(x, topPanelHeight) UNDER top but stretch fully vertically from there
                 // so they need to be "shortened" in height by a bottom padding of topPanel.height, because they will start under topPanel
-                val sidePanelsPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.leftPadding = sidePanelsPadding
-                fci.rightPadding = sidePanelsPadding
+                val sidePanelsPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.leftPadding = sidePanelsPadding
+                ci.rightPadding = sidePanelsPadding
 
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight=givenMaxHeight - fci.bottomSize.height)
-                fci.rightConstraints = fci.leftConstraints
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight=givenMaxHeight - ci.bottomSize.height)
+                ci.rightConstraints = ci.leftConstraints
 
-                measureLeftAndRight(fci, leftPanel, rightPanel)
+                measureLeftAndRight(ci, leftPanel, rightPanel)
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.topConstraints = fci.topConstraints.copy(maxWidth = mainContentWidthMax)
+                ci.topConstraints = ci.topConstraints.copy(maxWidth = mainContentWidthMax)
                 // =================================+
                 // measure topPanel
                 // =================================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max HEIGHT of the mainContent, having complete Constraints for the mainContent
                 // and therefore also for the bottomPanel
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_BOTTOM_THEN_LEFT_AND_RIGHT
-                val leftToRight2 = fci.leftSize.width + fci.topSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight1 = fci.bottomSize.width
+                val leftToRight2 = ci.leftSize.width + ci.topSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight1 = ci.bottomSize.width
 
-                val topToBottom1 = fci.leftSize.height + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.leftSize.height + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -563,20 +564,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_BOTTOM_THEN_LEFT_AND_RIGHT
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_BOTTOM_THEN_LEFT_AND_RIGHT
@@ -584,81 +585,81 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure bottomPanel
                 // ==============================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // left panel eventually is place(0, 0)
                 // bit it needs to be "shortened" in height by a bottom padding of bottomPanel.height, because it will over bottomPanel
-                fci.leftPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight=givenMaxHeight - fci.bottomSize.height)
+                ci.leftPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight=givenMaxHeight - ci.bottomSize.height)
 
                 // ==============================+
                 // measure leftPanel
                 // ==============================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // top panel eventually is place(leftWidth, 0)
                 // but it needs to be "shortened" in width by a end padding of leftPanel.width, because it will start right of leftPanel
-                fci.topPadding = PaddingValues(end = fci.leftSize.width.toDp())
-                fci.topConstraints = fci.topConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width)
+                ci.topPadding = PaddingValues(end = ci.leftSize.width.toDp())
+                ci.topConstraints = ci.topConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width)
 
                 // =================================+
                 // measure topPanel
                 // =================================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.rightPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight = givenMaxHeight - fci.topSize.height - fci.bottomSize.height)
+                ci.rightPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight = givenMaxHeight - ci.topSize.height - ci.bottomSize.height)
 
                 // =====================================+
                 // measure rightPanel
                 // =====================================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH _and_ HEIGHT of the mainContent
-                val mainContentMaxHeight = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                val mainContentMaxWidth = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentMaxHeight = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                val mainContentMaxWidth = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_BOTTOM_THEN_LEFT_THEN_TOP
-                val leftToRight1 = fci.leftSize.width + fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.bottomSize.width
+                val leftToRight1 = ci.leftSize.width + ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.bottomSize.width
 
-                val topToBottom1 = fci.leftSize.height  + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.leftSize.height  + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -669,20 +670,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_BOTTOM_THEN_LEFT_THEN_TOP
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_BOTTOM_THEN_LEFT_THEN_TOP
@@ -690,78 +691,78 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure bottomPanel
                 // ==============================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.rightPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight=givenMaxHeight - fci.bottomSize.height)
+                ci.rightPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight=givenMaxHeight - ci.bottomSize.height)
 
                 // ==============================+
                 // measure rightPanel
                 // ==============================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.topPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.topConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.rightSize.width)
+                ci.topPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.topConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.rightSize.width)
 
                 // ==============================+
                 // measure topPanel
                 // =================================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.leftPadding = PaddingValues(bottom = fci.topSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight = givenMaxHeight - fci.topSize.height - fci.bottomSize.height)
+                ci.leftPadding = PaddingValues(bottom = ci.topSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight = givenMaxHeight - ci.topSize.height - ci.bottomSize.height)
 
                 // =====================================+
                 // measure leftPanel
                 // =====================================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH _and_ HEIGHT of the mainContent
-                val mainContentMaxHeight = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                val mainContentMaxWidth = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentMaxHeight = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                val mainContentMaxWidth = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentMaxHeight, maxWidth = mainContentMaxWidth)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_BOTTOM_THEN_RIGHT_THEN_TOP
-                val leftToRight1 = fci.topSize.width + fci.rightSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.bottomSize.width
+                val leftToRight1 = ci.topSize.width + ci.rightSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.bottomSize.width
 
-                val topToBottom1 = fci.topSize.height  + fci.leftSize.height + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.topSize.height  + ci.leftSize.height + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -772,58 +773,58 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_BOTTOM_THEN_RIGHT_THEN_TOP
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_BOTTOM_THEN_RIGHT_THEN_TOP
             FramingStyle.STRETCH_LEFT_AND_RIGHT -> {
-                measureLeftAndRight(fci, leftPanel, rightPanel)
+                measureLeftAndRight(ci, leftPanel, rightPanel)
 
                 // top/bottom panels eventually are place(x,0) right of left and left of right
                 // for ending (leftWidth, 0), (leftWidth, height - bottomHeight) they have to be "shortened" in width by an end padding
-                val topBottomPanelsPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.topPadding = topBottomPanelsPadding
-                fci.bottomPadding = topBottomPanelsPadding
+                val topBottomPanelsPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.topPadding = topBottomPanelsPadding
+                ci.bottomPadding = topBottomPanelsPadding
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.topConstraints = fci.topConstraints.copy(maxWidth=mainContentWidthMax)
-                fci.bottomConstraints = fci.topConstraints
+                ci.topConstraints = ci.topConstraints.copy(maxWidth=mainContentWidthMax)
+                ci.bottomConstraints = ci.topConstraints
 
-                measureTopAndBottom(fci, topPanel, bottomPanel)
+                measureTopAndBottom(ci, topPanel, bottomPanel)
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max HEIGHT of the mainContent, having complete Constraints for the mainContent
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_TOP_THEN_LEFT_AND_RIGHT
-                val leftToRight1 = fci.leftSize.width + fci.topSize.width + fci.rightSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.leftSize.width + ci.topSize.width + ci.rightSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height
+                val topToBottom1 = ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -834,20 +835,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_TOP_THEN_LEFT_AND_RIGHT
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // FramingStyle.STRETCH_LEFT_AND_RIGHT
@@ -855,60 +856,60 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure leftPanel
                 // ==============================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // top and bottom panels eventually are place(leftPanelWidth, 0) RIGHT of leftPanel but stretch fully horizontally from there
                 // so they need to be "shortened" in width by a end padding of leftPanel.width, because they will start after leftPanel
-                val topAndBottomPanelsPadding = PaddingValues(end = fci.leftSize.width.toDp())
-                fci.topPadding = topAndBottomPanelsPadding
-                fci.bottomPadding = topAndBottomPanelsPadding
+                val topAndBottomPanelsPadding = PaddingValues(end = ci.leftSize.width.toDp())
+                ci.topPadding = topAndBottomPanelsPadding
+                ci.bottomPadding = topAndBottomPanelsPadding
 
-                fci.topConstraints = fci.topConstraints.copy(maxWidth=givenMaxWidth - fci.leftSize.width)
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width)
+                ci.topConstraints = ci.topConstraints.copy(maxWidth=givenMaxWidth - ci.leftSize.width)
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width)
 
-                measureTopAndBottom(fci, topPanel, bottomPanel)
+                measureTopAndBottom(ci, topPanel, bottomPanel)
 
                 // now we know the max HEIGHT of the mainContent
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
 
-                fci.rightPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight = mainContentHeightMax)
+                ci.rightPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight = mainContentHeightMax)
                 // =================================+
                 // measure rightPanel
                 // =================================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
                 // and therefore also for the rightPanel
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_LEFT_THEN_TOP_AND_BOTTOM
-                val leftToRight1 = fci.leftSize.width + fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width
+                val leftToRight1 = ci.leftSize.width + ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width
 
-                val topToBottom1 = fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -919,20 +920,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_LEFT_THEN_TOP_AND_BOTTOM
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_LEFT_THEN_TOP_AND_BOTTOM
@@ -940,79 +941,79 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure leftPanel
                 // ==============================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // bottom panel is eventually place(leftPanelWidth, 0) RIGHT of leftPanel but stretched fully horizontally from there
                 // so it needs to be "shortened" in width by a end padding of leftPanel.width, because it will start after leftPanel
-                fci.bottomPadding = PaddingValues(end = fci.leftSize.width.toDp())
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width)
+                ci.bottomPadding = PaddingValues(end = ci.leftSize.width.toDp())
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width)
 
                 // =================================+
                 // measure bottomPanel
                 // =================================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
 
-                fci.rightPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight = givenMaxHeight - fci.bottomSize.height)
+                ci.rightPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight = givenMaxHeight - ci.bottomSize.height)
                 // =================================+
                 // measure rightPanel
                 // =================================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.topPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.topConstraints = fci.topConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width - fci.rightSize.width)
+                ci.topPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.topConstraints = ci.topConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width - ci.rightSize.width)
 
                 // ==============================+
                 // measure topPanel
                 // ==============================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // and finally we know the max Height of the mainContent, having complete Constraints for the mainContent
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_LEFT_THEN_TOP_AND_BOTTOM
-                val leftToRight1 = fci.leftSize.width + fci.topSize.width + fci.rightSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width
+                val leftToRight1 = ci.leftSize.width + ci.topSize.width + ci.rightSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width
 
-                val topToBottom1 = fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height + fci.bottomSize.height
+                val topToBottom1 = ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height + ci.bottomSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -1023,20 +1024,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_LEFT_THEN_TOP_AND_BOTTOM
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_LEFT_THEN_BOTTOM_THEN_RIGHT
@@ -1044,79 +1045,79 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure leftPanel
                 // ==============================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // top panel is eventually place(leftPanelWidth, 0) RIGHT of leftPanel but stretched fully horizontally from there
                 // so it needs to be "shortened" in width by a end padding of leftPanel.width, because it will start after leftPanel
-                fci.topPadding = PaddingValues(end = fci.leftSize.width.toDp())
-                fci.topConstraints = fci.topConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width)
+                ci.topPadding = PaddingValues(end = ci.leftSize.width.toDp())
+                ci.topConstraints = ci.topConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width)
 
                 // =================================+
                 // measure topPanel
                 // =================================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
 
-                fci.rightPadding = PaddingValues(bottom = fci.topSize.height.toDp())
-                fci.rightConstraints = fci.rightConstraints.copy(maxHeight = givenMaxHeight - fci.topSize.height)
+                ci.rightPadding = PaddingValues(bottom = ci.topSize.height.toDp())
+                ci.rightConstraints = ci.rightConstraints.copy(maxHeight = givenMaxHeight - ci.topSize.height)
                 // =================================+
                 // measure rightPanel
                 // =================================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.bottomPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.leftSize.width - fci.rightSize.width)
+                ci.bottomPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.leftSize.width - ci.rightSize.width)
 
                 // ==============================+
                 // measure bottomPanel
                 // ==============================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // and finally we know the max Height of the mainContent, having complete Constraints for the mainContent
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_LEFT_THEN_TOP_THEN_RIGHT
-                val leftToRight1 = fci.leftSize.width + fci.topSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.leftSize.width + ci.topSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.topSize.height + fci.rightSize.height
+                val topToBottom1 = ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.topSize.height + ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -1127,20 +1128,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_LEFT_THEN_TOP_THEN_RIGHT
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, fci.topSize.height)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, ci.topSize.height)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_LEFT_THEN_TOP_THEN_RIGHT
@@ -1148,60 +1149,60 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure rightPanel
                 // ==============================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // top and bottom panels eventually are place(leftPanelWidth, 0) RIGHT of leftPanel but stretch fully horizontally from there
                 // so they need to be "shortened" in width by a end padding of rightPanel.width, because they will end before rightPanel
-                val topAndBottomPanelsPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.topPadding = topAndBottomPanelsPadding
-                fci.bottomPadding = topAndBottomPanelsPadding
+                val topAndBottomPanelsPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.topPadding = topAndBottomPanelsPadding
+                ci.bottomPadding = topAndBottomPanelsPadding
 
-                fci.topConstraints = fci.topConstraints.copy(maxWidth=givenMaxWidth - fci.rightSize.width)
-                fci.bottomConstraints = fci.bottomConstraints.copy(maxWidth = givenMaxWidth - fci.rightSize.width)
+                ci.topConstraints = ci.topConstraints.copy(maxWidth=givenMaxWidth - ci.rightSize.width)
+                ci.bottomConstraints = ci.bottomConstraints.copy(maxWidth = givenMaxWidth - ci.rightSize.width)
 
-                measureTopAndBottom(fci, topPanel, bottomPanel)
+                measureTopAndBottom(ci, topPanel, bottomPanel)
 
                 // now we know the max HEIGHT of the mainContent
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
 
-                fci.leftPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight = mainContentHeightMax)
+                ci.leftPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight = mainContentHeightMax)
                 // =================================+
                 // measure leftPanel
                 // =================================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.mainPadding = PaddingValues(start = fci.leftSize.width.toDp(), bottom = fci.bottomSize.height.toDp(), end = fci.rightSize.width.toDp())
+                ci.mainPadding = PaddingValues(start = ci.leftSize.width.toDp(), bottom = ci.bottomSize.height.toDp(), end = ci.rightSize.width.toDp())
                 // and finally we know the max WIDTH of the mainContent, having complete Constraints for the mainContent
                 // and therefore also for the rightPanel
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_RIGHT_THEN_TOP_AND_BOTTOM
-                val leftToRight1 = fci.topSize.width + fci.rightSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.topSize.width + ci.rightSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.topSize.height + fci.leftSize.height + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height
+                val topToBottom1 = ci.topSize.height + ci.leftSize.height + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -1212,20 +1213,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_RIGHT_THEN_TOP_AND_BOTTOM
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_RIGHT_THEN_TOP_AND_BOTTOM
@@ -1233,77 +1234,77 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure rightPanel
                 // ==============================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.bottomPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.bottomConstraints = fci.topConstraints.copy(maxWidth=givenMaxWidth - fci.rightSize.width)
+                ci.bottomPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.bottomConstraints = ci.topConstraints.copy(maxWidth=givenMaxWidth - ci.rightSize.width)
 
                 // =================================+
                 // measure bottomPanel
                 // =================================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.leftPadding = PaddingValues(bottom = fci.bottomSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight = givenMaxHeight - fci.bottomSize.height)
+                ci.leftPadding = PaddingValues(bottom = ci.bottomSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight = givenMaxHeight - ci.bottomSize.height)
                 // =================================+
                 // measure leftPanel
                 // =================================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.topPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.topConstraints = fci.topConstraints.copy(maxWidth=mainContentWidthMax)
+                ci.topPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.topConstraints = ci.topConstraints.copy(maxWidth=mainContentWidthMax)
 
                 // ==============================+
                 // measure topPanel
                 // ==============================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // and finally we know the max HEIGHT of the mainContent, having complete Constraints for the mainContent
                 // and therefore also for the rightPanel
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainPadding = PaddingValues(end = fci.rightSize.width.toDp(), bottom = fci.bottomSize.height.toDp())
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainPadding = PaddingValues(end = ci.rightSize.width.toDp(), bottom = ci.bottomSize.height.toDp())
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_RIGHT_THEN_BOTTOM_THEN_LEFT
-                val leftToRight1 = fci.leftSize.width + fci.topSize.width + fci.rightSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.leftSize.width + ci.topSize.width + ci.rightSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.leftSize.height + fci.bottomSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height
+                val topToBottom1 = ci.leftSize.height + ci.bottomSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -1314,20 +1315,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_RIGHT_THEN_BOTTOM_THEN_LEFT
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(0, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(0, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
+                    ci.leftPlaceables.forEach {
                         it.place( 0, 0)
                     }
-                    fci.topPlaceables.forEach {
-                        it.place(fci.leftSize.width, 0)
+                    ci.topPlaceables.forEach {
+                        it.place(ci.leftSize.width, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_RIGHT_THEN_BOTTOM_THEN_LEFT
@@ -1335,77 +1336,77 @@ private fun FramedContentLayout(
                 // ==============================+
                 // measure rightPanel
                 // ==============================+
-                fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-                    rightPanel(fci.rightPadding)
-                }.map { it.measure(fci.rightConstraints) }
-                fci.rightSize = IntSize(
-                    width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+                    rightPanel(ci.rightPadding)
+                }.map { it.measure(ci.rightConstraints) }
+                ci.rightSize = IntSize(
+                    width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.topPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.topConstraints = fci.topConstraints.copy(maxWidth=givenMaxWidth - fci.rightSize.width)
+                ci.topPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.topConstraints = ci.topConstraints.copy(maxWidth=givenMaxWidth - ci.rightSize.width)
 
                 // =================================+
                 // measure topPanel
                 // =================================+
-                fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-                    topPanel(fci.topPadding)
-                }.map { it.measure(fci.topConstraints) }
-                fci.topSize = IntSize(
-                    width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+                    topPanel(ci.topPadding)
+                }.map { it.measure(ci.topConstraints) }
+                ci.topSize = IntSize(
+                    width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
-                fci.leftPadding = PaddingValues(bottom = fci.topSize.height.toDp())
-                fci.leftConstraints = fci.leftConstraints.copy(maxHeight = givenMaxHeight - fci.topSize.height)
+                ci.leftPadding = PaddingValues(bottom = ci.topSize.height.toDp())
+                ci.leftConstraints = ci.leftConstraints.copy(maxHeight = givenMaxHeight - ci.topSize.height)
                 // =================================+
                 // measure leftPanel
                 // =================================+
-                fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-                    leftPanel(fci.leftPadding)
-                }.map { it.measure(fci.leftConstraints) }
-                fci.leftSize = IntSize(
-                    width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+                    leftPanel(ci.leftPadding)
+                }.map { it.measure(ci.leftConstraints) }
+                ci.leftSize = IntSize(
+                    width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // now we know the max WIDTH of the mainContent
-                val mainContentWidthMax = (givenMaxWidth - fci.leftSize.width - fci.rightSize.width).coerceAtLeast(0)
+                val mainContentWidthMax = (givenMaxWidth - ci.leftSize.width - ci.rightSize.width).coerceAtLeast(0)
 
-                fci.bottomPadding = PaddingValues(end = fci.rightSize.width.toDp())
-                fci.bottomConstraints = fci.topConstraints.copy(maxWidth=mainContentWidthMax)
+                ci.bottomPadding = PaddingValues(end = ci.rightSize.width.toDp())
+                ci.bottomConstraints = ci.topConstraints.copy(maxWidth=mainContentWidthMax)
 
                 // ==============================+
                 // measure bottomPanel
                 // ==============================+
-                fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-                    bottomPanel(fci.bottomPadding)
-                }.map { it.measure(fci.bottomConstraints) }
-                fci.bottomSize = IntSize(
-                    width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-                    height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+                ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+                    bottomPanel(ci.bottomPadding)
+                }.map { it.measure(ci.bottomConstraints) }
+                ci.bottomSize = IntSize(
+                    width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+                    height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
                 )
 
                 // and finally we know the max HEIGHT of the mainContent, having complete Constraints for the mainContent
                 // and therefore also for the rightPanel
-                val mainContentHeightMax = (givenMaxHeight - fci.topSize.height - fci.bottomSize.height).coerceAtLeast(0)
-                fci.mainPadding = PaddingValues(end = fci.rightSize.width.toDp(), bottom = fci.bottomSize.height.toDp())
-                fci.mainConstraints = fci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
+                val mainContentHeightMax = (givenMaxHeight - ci.topSize.height - ci.bottomSize.height).coerceAtLeast(0)
+                ci.mainPadding = PaddingValues(end = ci.rightSize.width.toDp(), bottom = ci.bottomSize.height.toDp())
+                ci.mainConstraints = ci.mainConstraints.copy(maxHeight = mainContentHeightMax, maxWidth = mainContentWidthMax)
 
-                measureMainContent(fci, mainContent)
+                measureMainContent(ci, mainContent)
 
                 // ==========================================================================================================+
                 // so now we can determine the overall (biggest combination) size of our complete FramedContent
                 // ==========================================================================================================+
                 // FramingStyle.STRETCH_RIGHT_THEN_TOP_THEN_LEFT
-                val leftToRight1 = fci.topSize.width + fci.rightSize.width
-                val leftToRight2 = fci.leftSize.width + fci.mainSize.width + fci.rightSize.width
-                val leftToRight3 = fci.leftSize.width + fci.bottomSize.width + fci.rightSize.width
+                val leftToRight1 = ci.topSize.width + ci.rightSize.width
+                val leftToRight2 = ci.leftSize.width + ci.mainSize.width + ci.rightSize.width
+                val leftToRight3 = ci.leftSize.width + ci.bottomSize.width + ci.rightSize.width
 
-                val topToBottom1 = fci.topSize.height + fci.leftSize.height
-                val topToBottom2 = fci.topSize.height + fci.mainSize.height + fci.bottomSize.height
-                val topToBottom3 = fci.rightSize.height
+                val topToBottom1 = ci.topSize.height + ci.leftSize.height
+                val topToBottom2 = ci.topSize.height + ci.mainSize.height + ci.bottomSize.height
+                val topToBottom3 = ci.rightSize.height
 
                 val eventualLayoutWidth = maxOf(leftToRight1, leftToRight2, leftToRight3)
                 val eventualLayoutHeight = maxOf(topToBottom1, topToBottom2, topToBottom3)
@@ -1416,20 +1417,20 @@ private fun FramedContentLayout(
                 // FramingStyle.STRETCH_RIGHT_THEN_TOP_THEN_LEFT
                 layout(eventualLayoutWidth, eventualLayoutHeight) {
                     // The bottom bar is always at the bottom of the layout
-                    fci.bottomPlaceables.forEach {
-                        it.place(fci.leftSize.width, eventualLayoutHeight - fci.bottomSize.height)
+                    ci.bottomPlaceables.forEach {
+                        it.place(ci.leftSize.width, eventualLayoutHeight - ci.bottomSize.height)
                     }
-                    fci.rightPlaceables.forEach {
-                        it.place( eventualLayoutWidth - fci.rightSize.width, 0)
+                    ci.rightPlaceables.forEach {
+                        it.place( eventualLayoutWidth - ci.rightSize.width, 0)
                     }
-                    fci.leftPlaceables.forEach {
-                        it.place( 0, fci.topSize.height)
+                    ci.leftPlaceables.forEach {
+                        it.place( 0, ci.topSize.height)
                     }
-                    fci.topPlaceables.forEach {
+                    ci.topPlaceables.forEach {
                         it.place(0, 0)
                     }
-                    fci.mainPlaceables.forEach {
-                        it.place(fci.leftSize.width, fci.topSize.height)
+                    ci.mainPlaceables.forEach {
+                        it.place(ci.leftSize.width, ci.topSize.height)
                     }
                 }
             } // STRETCH_RIGHT_THEN_TOP_THEN_LEFT
@@ -1438,71 +1439,71 @@ private fun FramedContentLayout(
 }
 
 private fun SubcomposeMeasureScope.measureLeftAndRight(
-    fci: FramedContentInfo,
+    ci: FramedContentInfo,
     leftPanel: @Composable ((PaddingValues) -> Unit),
     rightPanel: @Composable ((PaddingValues) -> Unit),
 ) {
-    fci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
-        leftPanel(fci.leftPadding)
-    }.map { it.measure(fci.leftConstraints) }
-    fci.leftSize = IntSize(
-        width = fci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
-        height = fci.leftPlaceables.maxOfOrNull { it.height } ?: 0
+    ci.leftPlaceables = subcompose(FramedContentLayoutSlots.LeftPanel) {
+        leftPanel(ci.leftPadding)
+    }.map { it.measure(ci.leftConstraints) }
+    ci.leftSize = IntSize(
+        width = ci.leftPlaceables.maxOfOrNull { it.width } ?: 0,
+        height = ci.leftPlaceables.maxOfOrNull { it.height } ?: 0
     )
     // =====================================+
     // measure rightPanel
     // =====================================+
-    fci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
-        rightPanel(fci.rightPadding)
-    }.map { it.measure(fci.rightConstraints) }
-    fci.rightSize = IntSize(
-        width = fci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
-        height = fci.rightPlaceables.maxOfOrNull { it.height } ?: 0
+    ci.rightPlaceables = subcompose(FramedContentLayoutSlots.RightPanel) {
+        rightPanel(ci.rightPadding)
+    }.map { it.measure(ci.rightConstraints) }
+    ci.rightSize = IntSize(
+        width = ci.rightPlaceables.maxOfOrNull { it.width } ?: 0,
+        height = ci.rightPlaceables.maxOfOrNull { it.height } ?: 0
     )
 }
 
 private fun SubcomposeMeasureScope.measureTopAndBottom(
-    fci: FramedContentInfo,
+    ci: FramedContentInfo,
     topPanel: @Composable ((PaddingValues) -> Unit),
     bottomPanel: @Composable ((PaddingValues) -> Unit),
 ) {
     // ==============================+
     // measure topPanel
     // ==============================+
-    fci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
-        topPanel(fci.topPadding)
-    }.map { it.measure(fci.topConstraints) }
-    fci.topSize = IntSize(
-        width = fci.topPlaceables.maxOfOrNull { it.width } ?: 0,
-        height = fci.topPlaceables.maxOfOrNull { it.height } ?: 0
+    ci.topPlaceables = subcompose(FramedContentLayoutSlots.TopPanel) {
+        topPanel(ci.topPadding)
+    }.map { it.measure(ci.topConstraints) }
+    ci.topSize = IntSize(
+        width = ci.topPlaceables.maxOfOrNull { it.width } ?: 0,
+        height = ci.topPlaceables.maxOfOrNull { it.height } ?: 0
     )
 
     // =================================+
     // measure bottomPanel
     // =================================+
-    fci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
-        bottomPanel(fci.bottomPadding)
-    }.map { it.measure(fci.bottomConstraints) }
-    fci.bottomSize = IntSize(
-        width = fci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
-        height = fci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
+    ci.bottomPlaceables = subcompose(FramedContentLayoutSlots.BottomPanel) {
+        bottomPanel(ci.bottomPadding)
+    }.map { it.measure(ci.bottomConstraints) }
+    ci.bottomSize = IntSize(
+        width = ci.bottomPlaceables.maxOfOrNull { it.width } ?: 0,
+        height = ci.bottomPlaceables.maxOfOrNull { it.height } ?: 0
     )
 }
 
 
 private fun SubcomposeMeasureScope.measureMainContent(
-    fci: FramedContentInfo,
+    ci: FramedContentInfo,
     mainContent: @Composable ((PaddingValues) -> Unit),
 ) {
     // ====================================+
     // measure mainContent
     // ====================================+
-    fci.mainPlaceables = subcompose(FramedContentLayoutSlots.MainContent) {
-        mainContent(fci.mainPadding)
-    }.map { it.measure(fci.mainConstraints) }
-    fci.mainSize = IntSize(
-        width = fci.mainPlaceables.maxOfOrNull { it.width } ?: 0,
-        height = fci.mainPlaceables.maxOfOrNull { it.height } ?: 0
+    ci.mainPlaceables = subcompose(FramedContentLayoutSlots.MainContent) {
+        mainContent(ci.mainPadding)
+    }.map { it.measure(ci.mainConstraints) }
+    ci.mainSize = IntSize(
+        width = ci.mainPlaceables.maxOfOrNull { it.width } ?: 0,
+        height = ci.mainPlaceables.maxOfOrNull { it.height } ?: 0
     )
 }
 

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.foundation.layout.wrapContentSize
@@ -30,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import com.hoffi.compose.complib.Greeting
 import com.hoffi.compose.complib.debugBorder
 import com.hoffi.compose.complib.debugMode
+import com.hoffi.compose.complib.layouts.draweredcontent.DraweredContent
 import complib.shared.generated.resources.Res
 import complib.shared.generated.resources.compose_multiplatform
 import org.jetbrains.compose.resources.painterResource
@@ -131,8 +133,35 @@ fun FramedContentAppBox() {
                         textAlign = TextAlign.Center
                     )
                 }
-            },
-            mainContent = {
+            }
+        ) {
+            DraweredContent(
+                modifier = Modifier.debugBorder(),
+                topDrawer = { paddingValues ->
+                    Box(
+                        modifier = Modifier.debugBorder(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Top Drawer",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                },
+                leftDrawer = { paddingValues ->
+                    Box(
+                        modifier = Modifier.debugBorder(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = "Left Drawer",
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                },
+            ) {
                 Box(
                     modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center).debugBorder(),
                     contentAlignment = Alignment.TopCenter
@@ -145,7 +174,7 @@ fun FramedContentAppBox() {
                         textAlign = TextAlign.Center,
                     )
                 }
-            },
-        )
+            }
+        }
     }
 }
