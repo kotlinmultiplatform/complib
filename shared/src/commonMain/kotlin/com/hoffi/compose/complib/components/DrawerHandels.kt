@@ -1,4 +1,4 @@
-package com.hoffi.compose.complib.layouts.draweredcontent
+package com.hoffi.compose.complib.components
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -30,7 +30,7 @@ fun TopDrawerHandle(
     Surface(
         tonalElevation = DrawerHandleDefaults.drawerTonalElevation,
         shadowElevation = DrawerHandleDefaults.drawerTonalElevation * 2,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(handleHeight)
     ) {
@@ -49,12 +49,12 @@ fun BottomDrawerHandle(
     Surface(
         tonalElevation = DrawerHandleDefaults.drawerTonalElevation,
         shadowElevation = DrawerHandleDefaults.drawerTonalElevation * 2,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(handleHeight)
     ) {
         Box(Modifier.fillMaxSize()) {
-            DrawerHandleTrianglesUpDown(pointsDown = isClosed, drawerDp = handleHeight)
+            DrawerHandleTrianglesUpDown(pointsDown = !isClosed, drawerDp = handleHeight)
         }
     }
 }
@@ -68,7 +68,7 @@ fun LeftDrawerHandle(
     Surface(
         tonalElevation = DrawerHandleDefaults.drawerTonalElevation,
         shadowElevation = DrawerHandleDefaults.drawerTonalElevation * 2,
-        modifier = Modifier
+        modifier = modifier
             .width(handleWidth)
             .fillMaxHeight()
     ) {
@@ -88,12 +88,12 @@ fun RightDrawerHandle(
     Surface(
         tonalElevation = DrawerHandleDefaults.drawerTonalElevation,
         shadowElevation = DrawerHandleDefaults.drawerTonalElevation * 2,
-        modifier = Modifier
+        modifier = modifier
             .width(handleWidth)
             .fillMaxHeight()
     ) {
         Box(Modifier.fillMaxSize()) {
-            DrawerHandleTrianglesLeftRight(pointsRight = isClosed, drawerDp = handleWidth)
+            DrawerHandleTrianglesLeftRight(pointsRight = !isClosed, drawerDp = handleWidth)
         }
     }
 }

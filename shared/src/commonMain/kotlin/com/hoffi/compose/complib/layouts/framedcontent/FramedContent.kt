@@ -9,7 +9,7 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.layout.SubcomposeMeasureScope
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
-import com.hoffi.compose.complib.layouts.EmptyComposable
+import com.hoffi.compose.complib.EmptyComposable
 
 enum class FramingStyle {
     // TOP

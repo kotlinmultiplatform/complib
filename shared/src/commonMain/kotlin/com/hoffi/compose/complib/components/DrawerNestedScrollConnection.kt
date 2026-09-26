@@ -1,4 +1,4 @@
-package com.hoffi.compose.complib.layouts.draweredcontent
+package com.hoffi.compose.complib.components
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,8 +19,8 @@ import kotlinx.coroutines.launch
  * 3. Sheet at full + content at top + dragging down → collapse the SHEET
  * 4. Sheet at full + content at top + dragging up → nothing (already at top)
  */
-class SheetNestedScrollConnection(
-    private val sheetState: BottomSheetState,
+class DrawerNestedScrollConnection(
+    private val drawerState: DrawerState,
     private val coroutineScope: CoroutineScope
 ) : NestedScrollConnection {
     // Is the inner content scrolled to the very top?
@@ -32,15 +32,15 @@ class SheetNestedScrollConnection(
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
         val dy = available.y  // Positive = finger moving down, negative = finger moving up
         // If sheet is NOT at full position → consume scroll to move the sheet
-        if (sheetState.currentStop != SheetStop.FULL) {
-            coroutineScope.launch { sheetState.drag(-dy) }
+        if (drawerState.currentStop != DrawerPos.FULL) {
+            coroutineScope.launch { drawerState.drag(-dy) }
             return available  // Consume all - child gets nothing
         }
         // Sheet IS at full position
         if (dy > 0 && isContentAtTop) {
             // User is dragging DOWN and content is at top
             // → Start collapsing the sheet instead of scrolling content
-            coroutineScope.launch { sheetState.drag(-dy) }
+            coroutineScope.launch { drawerState.drag(-dy) }
             return available  // Consume all
         }
         // Otherwise, let the child handle it (normal scrolling)
@@ -57,8 +57,8 @@ class SheetNestedScrollConnection(
     ): Offset {
         // If there's leftover scroll after the child is done,
         // use it to move the sheet
-        if (available.y != 0f && sheetState.currentStop == SheetStop.FULL) {
-            coroutineScope.launch { sheetState.drag(-available.y) }
+        if (available.y != 0f && drawerState.currentStop == DrawerPos.FULL) {
+            coroutineScope.launch { drawerState.drag(-available.y) }
             return available
         }
         return Offset.Zero
@@ -68,13 +68,13 @@ class SheetNestedScrollConnection(
      * We intercept fast flings to move the sheet.
      */
     override suspend fun onPreFling(available: Velocity): Velocity {
-        if (sheetState.currentStop != SheetStop.FULL) {
-            sheetState.settle(-available.y)
+        if (drawerState.currentStop != DrawerPos.FULL) {
+            drawerState.settle(-available.y)
             return available  // Consume
         }
         if (available.y > 0 && isContentAtTop) {
             // Fling DOWN with content at top → settle the sheet
-            sheetState.settle(-available.y)
+            drawerState.settle(-available.y)
             return available
         }
         return Velocity.Zero
@@ -84,7 +84,7 @@ class SheetNestedScrollConnection(
      */
     override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
         if (available.y != 0f) {
-            sheetState.settle(-available.y)
+            drawerState.settle(-available.y)
             return available
         }
         return Velocity.Zero

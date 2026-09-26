@@ -1,4 +1,4 @@
-package com.hoffi.compose.complib.layouts
+package com.hoffi.compose.complib
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
