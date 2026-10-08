@@ -99,7 +99,13 @@ fun FramedContentAppBox() {
                     currentFraming = framingStyles[nextIndex]
                 },
             ) {
-                Text(currentFraming.name)
+                Text(currentFraming.name
+                    .replaceFirst("STRETCH_", "")
+                    .replaceFirst("TOP", "T")
+                    .replaceFirst("BOTTOM", "B")
+                    .replaceFirst("LEFT", "L")
+                    .replaceFirst("RIGHT", "R")
+                )
             }
             Button(
                 onClick = {
@@ -117,12 +123,12 @@ fun FramedContentAppBox() {
                     coroutineScope.launch { rightDrawerState.snapTo(DrawerPos.entries.random()) }
                 }
             ) {
-                Text("Randomize drawers")
+                Text("RandDrawers")
             }
         }
 
         FramedContent(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             framing = currentFraming,
             topPanel = { TopPanel(greeting) },
             bottomPanel = {
